@@ -1,0 +1,22 @@
+{
+  "name": "thesis",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "clean": "rm -rf node_modules",
+    "reinstall": "npm run clean && npm install",
+    "debug": "nodemon --inspect .",
+    "watch": "nodemon .",
+    "start": "node app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.11.2",
+    "@hyperledger/fabric-gateway": "^1.5.1",
+    "crypto": "^1.0.1",
+    "express": "^4.19.2"
+  }
+}

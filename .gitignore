@@ -1,0 +1,12 @@
+# Dependency directories
+node_modules/
+.vscode/
+client/
+chaincode/.nyc_output
+chaincode/node_modules/
+chaincode/jspm_packages/
+chaincode/package-lock.json
+
+package-lock.json
+test.fabric
+
