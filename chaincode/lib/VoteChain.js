@@ -1,4 +1,3 @@
-
 'use strict';
 
 // Deterministic JSON.stringify()
@@ -6,131 +5,280 @@ const stringify  = require('json-stringify-deterministic');
 const sortKeysRecursive  = require('sort-keys-recursive');
 const { Contract } = require('fabric-contract-api');
 
+let endTime;
+
 class VoteChain extends Contract {
 
+    // InitLedger initializes the chaincode state with a few sample voting options
     async InitLedger(ctx) {
+        // const options = [
+        //     {
+        //         Id: "1",
+        //         Name: "George",
+        //     },
+        //     {
+        //         Id: "2",
+        //         Name: "Sample1",
+        //     },
+        //     {
+        //         Id: "3",
+        //         Name: "Sample2",
+        //     },
+        //     {
+        //         Id: "4",
+        //         Name: "Sample2",
+        //     },
+        // ];
+
         const votes = [
             {
-                ID: 'vote1',
-                Owner: 'Tomoko',
-                hasVoted: false,
+                Id: "1",
+                voteFlag: false,
             },
             {
-                ID: 'vote2',
-                Owner: 'Brad',
-                hasVoted: false,
+                Id: "2",
+                voteFlag: true,
             },
             {
-                ID: 'vote3',
-                Owner: 'Jin Soo',
-                hasVoted: false,
+                Id: "3",
+                voteFlag: false,
             },
-            {
-                ID: 'vote4',
-                Owner: 'Max',
-                hasVoted: true,
-            },
-        ];
+        ]
 
+        // write to world state deterministically
+        // use convetion of alphabetic order
+        // we insert data in alphabetic order using 'json-stringify-deterministic' and 'sort-keys-recursive'
+        // when retrieving data, in any lang, the order of data will be the same and consequently also the corresonding hash
+
+        // for (const option of options) {
+        //     option.docType = 'option';    
+        //     await ctx.stub.putState(option.Id, Buffer.from(stringify(sortKeysRecursive(option))));
+        // }
+        
         for (const vote of votes) {
             vote.docType = 'vote';
-            // example of how to write to world state deterministically
-            // use convetion of alphabetic order
-            // we insert data in alphabetic order using 'json-stringify-deterministic' and 'sort-keys-recursive'
-            // when retrieving data, in any lang, the order of data will be the same and consequently also the corresonding hash
-            await ctx.stub.putState(vote.ID, Buffer.from(stringify(sortKeysRecursive(vote))));
+            await ctx.stub.putState(vote.Id, Buffer.from(stringify(sortKeysRecursive(vote))));
         }
     }
 
-    // CreateAsset issues a new asset to the world state with given details.
-    async CreateVote(ctx, id, owner, hasVoted) {
-        const exists = await this.VoteExists(ctx, id);
-        if (exists) {
-            throw new Error(`The asset ${id} already exists`);
+    // queryVotes retrieves the vote count for a specific option
+    async queryVotes(ctx, voteId) {
+        const voteJSON = await ctx.stub.getState(voteId);
+        if (!voteJSON) {
+            throw new Error("===== Vote doesn't exist =====");
         }
 
-        const vote = {
-            ID: id,
-            Owner: owner,
-            hasVoted: hasVoted,
-        };
-        // we insert data in alphabetic order using 'json-stringify-deterministic' and 'sort-keys-recursive'
-        await ctx.stub.putState(id, Buffer.from(stringify(sortKeysRecursive(vote))));
+        let votes;
+        try {
+            votes = JSON.parse(voteJSON.toString());
+        } catch (err) {
+            throw new Error(`===== Failed to parse vote JSON: ${err} =====`);
+        }
+        return votes;
+    }
+
+    async queryVote(ctx, voteId){
+        console.info('============= START : queryVote ===========');
+        console.log(`voteId: ${voteId}`);
+
+        // if(votestart == false){
+        //   	console.info("Voting has not started yet!");
+        //     console.info('============= END : queryVote ===========');
+        //     return JSON.stringify({"ownerId":"-2","hasVoted":false});
+
+        // }
+
+        // get the vote from chaincode state
+        const voteQuery = await ctx.stub.getState(voteId); 
+        if (!voteQuery || voteQuery.length === 0) {
+            console.info(`${voteId} does not exist!`);            
+            return JSON.stringify({"Id":"-1","voteFlag":false});
+        }
+        let vote = JSON.parse(voteQuery.toString());
+        // console.log(vote);
+        if(vote.voteFlag == true){
+        console.info('============= END : queryVote ===========');
         return JSON.stringify(vote);
-    }
-
-    // ReadAsset returns the asset stored in the world state with given id.
-    async ReadVote(ctx, id) {
-        const voteJSON = await ctx.stub.getState(id); // get the asset from chaincode state
-        if (!voteJSON || voteJSON.length === 0) {
-            throw new Error(`The vote ${id} does not exist`);
         }
-        return voteJSON.toString();
-    }
-
-    // UpdateAsset updates an existing asset in the world state with provided parameters.
-    async UpdateVote(ctx, id, owner, hasVoted) {
-        const exists = await this.VoteExists(ctx, id);
-        if (!exists) {
-            throw new Error(`The vote ${id} does not exist`);
-        }
-
-        // overwriting original asset with new asset
-        const updatedVote = {
-            ID: id,
-            Owner: owner,
-            hasVoted: hasVoted,
-        };
-        // we insert data in alphabetic order using 'json-stringify-deterministic' and 'sort-keys-recursive'
-        return ctx.stub.putState(id, Buffer.from(stringify(sortKeysRecursive(updatedVote))));
-    }
-
-    // DeleteAsset deletes an given asset from the world state.
-    async DeleteVote(ctx, id) {
-        const exists = await this.VoteExists(ctx, id);
-        if (!exists) {
-            throw new Error(`The vote ${id} does not exist`);
-        }
-        return ctx.stub.deleteState(id);
-    }
-
-    // AssetExists returns true when asset with given ID exists in world state.
-    async VoteExists(ctx, id) {
-        const voteJSON = await ctx.stub.getState(id);
-        return voteJSON && voteJSON.length > 0;
-    }
-
-    // TransferAsset updates the owner field of asset with given id in the world state.
-    async TransferVote(ctx, id, newOwner) {
-        const voteString = await this.ReadVote(ctx, id);
-        const vote = JSON.parse(voteString);
-        const oldOwner = vote.Owner;
-        asset.Owner = newOwner;
-        // we insert data in alphabetic order using 'json-stringify-deterministic' and 'sort-keys-recursive'
-        await ctx.stub.putState(id, Buffer.from(stringify(sortKeysRecursive(vote))));
-        return oldOwner;
-    }
-
-    // GetAllAssets returns all assets found in the world state.
-    async GetAllVotes(ctx) {
-        const allResults = [];
-        // range query with empty string for startKey and endKey does an open-ended query of all assets in the chaincode namespace.
-        const iterator = await ctx.stub.getStateByRange('', '');
-        let result = await iterator.next();
-        while (!result.done) {
-            const strValue = Buffer.from(result.value.value.toString()).toString('utf8');
-            let record;
-            try {
-                record = JSON.parse(strValue);
-            } catch (err) {
-                console.log(err);
-                record = strValue;
+        else{
+            console.log(`Vote ${voteId} has not been cast yet.`);
+            return JSON.stringify({"Id":"-1","voteFlag":false});   
             }
-            allResults.push(record);
-            result = await iterator.next();
-        }
-        return JSON.stringify(allResults);
     }
+
+    // getAllVotes returns all vote objects
+    async getAllVotes(ctx) {
+        const iterator = await ctx.stub.getStateByRange("", "");
+        const votes = [];
+
+        try {
+            while (true) {
+                const result = await iterator.next();
+                if (result.done) {
+                    break;
+                }
+                const vote = JSON.parse(result.value.value.toString());
+                votes.push(vote);
+            }
+        } catch (err) {
+            throw new Error(`===== Failed to get from world state: ${err} =====`);
+        } finally {
+            await iterator.close();
+        }
+
+        return JSON.stringify(votes);;
+    }
+
+    // AddVote adds a new vote object to the ledger
+    async AddVote(ctx, Id) {
+        const findOption = await this.queryExists(ctx, Id);
+        if (findOption) {
+            throw new Error(`Option ${findOption} already exist`);
+        }
+        console.info('===== Attempting to add voting option =====')
+        const vote = {
+            Id: Id,
+            voteFlag: false,
+        };
+        // Put Vote to the ledger
+        try {
+            await ctx.stub.putState(vote.Id, Buffer.from(JSON.stringify(vote)));
+        } catch (err) {
+            throw new Error(`===== Failed to put vote state: ${err} =====`);
+        }
+        
+        console.info('===== Vote successfully added =====')
+        return null;
+    }
+
+    // async CreateVote(ctx, Id) {
+    //     console.info('===== Attempting to create vote object for new voter')
+    //     const vote = {
+    //         ownerId: Id,
+    //         hasVoted: false,
+    //     };
+
+    //     // const voteJSON = JSON.stringify(vote);
+    //     // Put vote object to ledger
+    //     try {
+    //         await ctx.stub.putState(vote.ownerId, Buffer.from(JSON.stringify(vote)));
+    //     } catch (err) {
+    //         throw new Error(`===== Failed to put vote object state: ${err} =====`);
+    //     }
+    // }
+
+    async queryExists(ctx, Id) {
+        const user = await ctx.stub.getState(Id);
+        return user && user.length > 0;
+    }
+
+    async setEndTime(ctx, timeVal){
+        console.info('===== Setting election closing time =====');
+        // The EC invokes this function to set an end time for the election. 
+        // It takes the election duration in minutes as an input, and adds that to 
+        // the current time to define the end time. 
+
+        // Before the election end time is specified, voting is turned off and 
+        // voters cannot cast their votes, or query the ledger. 
+
+        // After the end time is set, voters are allowed to cast their votes. However, untill 
+        // the end time elapses, all query functions are blocked.
+
+        let curDate = new Date();
+
+        curDate = curDate.setTime(curDate.getTime()+ parseInt(timeVal)*60*1000);
+        endTime = new Date(curDate);
+
+        // votestart = true;
+        
+        console.info('===== Successfully set end time =====');
+
+        return endTime.toString();
+    }
+
+    async castVote(ctx, voterId, optionId){
+        console.info('======= Attempting to cast vote ======');
+        // This function is invoked to change the vote object id to the option the voter chooses and the vote is cast
+
+        // Before committing any change it checks:
+        // -If the voting has  started yet
+        // -If the current time is earlier than the election closing time
+        
+        // If no vote is owned by the voterId, the vote must have already been cast and the voter 
+        // is trying to double spend. An error is returned, and the vote is not cast.
+        
+        // If the vote object is found, it is fetched from the chainstate. The owner id is changes
+        // to the candidate id that the voter wishes to vote for, and the hasVoted field to set to true.
+
+        let curTime = new Date();
+
+        // if(votestart!= true){
+        //   	console.info("Voting has not started yet.");
+        //     return "0";
+        // }
+        if(curTime.getTime()>endTime.getTime()){
+          	console.info("Voting has ended.");
+            return "1";
+        }
+	
+      	// Finding the voteId of the vote object owned by the voter.
+        let voteId = -1;
+        // const startKey = '0';
+        // const endKey = (voteId+1).toString();
+        const iterator = await ctx.stub.getStateByRange("", "");
+
+        while(true){
+            const res = await iterator.next();
+            if (res.value && res.value.value.toString()) {
+                const Key = res.value.key;
+                let vote;
+
+                try{
+                    vote = JSON.parse(res.value.value.toString('utf8'));
+                    if (vote.Id == voterId){
+                        voteId = Key;
+                        break;
+                    }
+                } catch (err){
+                    console.info("voterId not found, maybe you have not registered.")
+                    console.log(err);
+                    vote = res.value.value.toString('utf8');
+                }
+            }
+            if (res.done){
+                if (voteId == -1){
+                    await iterator.close();
+                    console.info('Voter has already voted, exiting without casting vote.');
+                    return "2";
+                } 
+                await iterator.close();
+                break;
+            }
+        }
+
+        // Get the vote from chaincode state
+        const voteState = await ctx.stub.getState(voteId); 
+        if (!voteState || voteState.length === 0) {
+            throw new Error(`${voteId} associated with your account does not exist, you could have already voted!`);
+        }
+        let vote = JSON.parse(voteState.toString());
+      
+      	/*Set the ownerId to the CandidateId of the preffered candidate, and set 
+      	hasVoted to true.*/
+      
+        if (vote.voteFlag != true){
+            vote.Id = optionId;
+            vote.voteFlag = true;
+        } else {
+            throw new Error('Already voted.');
+        }
+
+        await ctx.stub.putState(voteId, Buffer.from(JSON.stringify(vote)));
+        console.info(`voteId ${voteId} casted successfully.`);
+
+        return null;
+    }
+
 }
 
 module.exports = VoteChain;

@@ -9,6 +9,10 @@ const channelName = envOrDefault('CHANNEL_NAME', 'mychannel');
 const chaincodeName = envOrDefault('CHAINCODE_NAME', 'basic');
 const mspId = envOrDefault('MSP_ID', 'Org1MSP');
 
+// let duration = ((parseInt(duration_d)*24*60) + (parseInt(duration_h)*60)+ (parseInt(duration_m))).toString();
+let duration = (parseInt(3600)).toString();
+
+
 // Path to crypto materials.
 const cryptoPath = envOrDefault(
     'CRYPTO_PATH',
@@ -60,7 +64,7 @@ const peerEndpoint = envOrDefault('PEER_ENDPOINT', 'localhost:7051');
 const peerHostAlias = envOrDefault('PEER_HOST_ALIAS', 'peer0.org1.example.com');
 
 const utf8Decoder = new TextDecoder();
-const voteId = `vote${String(Date.now())}`;
+// const voteId = `vote${String(Date.now())}`;
 
 async function main() {
     displayInputParameters();
@@ -93,25 +97,30 @@ async function main() {
 
         // Get the smart contract from the network.
         const contract = network.getContract(chaincodeName);
-        console.log(contract);
 
         // Initialize a set of asset data on the ledger using the chaincode 'InitLedger' function.
-        await initLedger(contract);
+        await InitLedger(contract);
 
-        // Return all the current assets on the ledger.
+        await setEndTime(contract, duration);
+
         await getAllVotes(contract);
 
-        // Create a new asset on the ledger.
-        await CreateVote(contract);
+        await queryVotes(contract, "2");
 
-        // Update an existing asset asynchronously.
-        await transferVoteAsync(contract);
+        await AddVote(contract, "Bob");
 
-        // Get the asset details by assetID.
-        await readVoteByID(contract);
+        await getAllVotes(contract);
 
-        // Update an asset which does not exist.
-        await updateNonExistentVote(contract);
+        await castVote(contract, "1", "3");
+
+        await queryVote(contract, "2");
+
+        await queryVote(contract, "3");
+
+        await queryVote(contract, "1");
+
+        await getAllVotes(contract);
+
     } finally {
         gateway.close();
         client.close();
@@ -157,7 +166,7 @@ async function newSigner() {
  * This type of transaction would typically only be run once by an application the first time it was started after its
  * initial deployment. A new version of the chaincode deployed later would likely not need to run an "init" function.
  */
-async function initLedger(contract) {
+async function InitLedger(contract) {
     console.log(
         '\n--> Submit Transaction: InitLedger, function creates the initial set of votes on the ledger'
     );
@@ -167,104 +176,124 @@ async function initLedger(contract) {
     console.log('*** Transaction committed successfully');
 }
 
+async function setEndTime(contract, timeVal) {
+    console.log('setting end time of election');
+    await contract.submitTransaction('setEndTime', timeVal);
+
+    console.log('time set successfully');
+}
+
 /**
  * Evaluate a transaction to query ledger state.
  */
-async function getAllVotes(contract) {
-    console.log(
-        '\n--> Evaluate Transaction: GetAllVotes, function returns all the current votes on the ledger'
-    );
+async function queryVotes(contract, optionId) {
 
-    const resultBytes = await contract.evaluateTransaction('GetAllVotes');
+    const resultBytes = await contract.evaluateTransaction('queryVotes', optionId);
 
     const resultJson = utf8Decoder.decode(resultBytes);
     const result = JSON.parse(resultJson);
-    console.log('*** Result:', result);
+    console.log('*** Votes Result:', result);
+}
+
+async function queryVote(contract, optionId) {
+
+    const resultBytes = await contract.evaluateTransaction('queryVote', optionId);
+
+    const resultJson = utf8Decoder.decode(resultBytes);
+    const result = JSON.parse(resultJson);
+    console.log('*** Votes Result:', result);
+}
+
+async function getAllVotes(contract) {
+
+    const resultBytes = await contract.evaluateTransaction('getAllVotes');
+
+    const resultJson = utf8Decoder.decode(resultBytes);
+    const result = JSON.parse(resultJson);
+    console.log('*** AllVotes Result:', result);
+}
+
+async function AddVote(contract, Name) {
+    const voteId = await generateId();
+    
+    const response = await contract.submitTransaction('AddVote', voteId);
+    
+}
+
+// Generate the option ID
+async function generateId() {	
+    let uId = "";
+	const chars = '0123456789'; // List of digits
+
+	for (let i = 0; i < 16; i++) {
+		const randomIndex = Math.floor(Math.random() * chars.length);
+		uId += chars.charAt(randomIndex);
+	}
+
+	return uId;
+}
+
+async function castVote(contract, voteId, optionId) {
+    
+    const response = await contract.submitTransaction('castVote', voteId, optionId);
+    
 }
 
 /**
  * Submit a transaction synchronously, blocking until it has been committed to the ledger.
  */
-async function CreateVote(contract) {
-    console.log(
-        '\n--> Submit Transaction: createVote, creates new asset with ID, Color, Size, Owner and AppraisedValue arguments'
-    );
+// async function CreateVote(contract) {
+//     console.log(
+//         '\n--> Submit Transaction: createVote, creates new asset with ID, Color, Size, Owner and AppraisedValue arguments'
+//     );
+//     let voteId = { Id: 6 };
 
-    await contract.submitTransaction(
-        'CreateVote',
-        voteId,
-        'Tom',
-        hasVoted,
-    );
+//     await contract.submitTransaction(
+//         'CreateVote',
+//         voteId,
+//     );
 
-    console.log('*** Transaction committed successfully');
-}
+//     console.log('*** Transaction committed successfully');
+// }
 
 /**
  * Submit transaction asynchronously, allowing the application to process the smart contract response (e.g. update a UI)
  * while waiting for the commit notification.
  */
-async function transferVoteAsync(contract) {
-    console.log(
-        '\n--> Async Submit Transaction: TransferVote, updates existing vote owner'
-    );
+// async function TransferVote(contract) {
+//     console.log(
+//         '\n--> Async Submit Transaction: TransferVote, updates existing vote owner'
+//     );
 
-    const commit = await contract.submitAsync('TransferVote', {
-        arguments: [voteId, 'Saptha'],
-    });
-    const oldOwner = utf8Decoder.decode(commit.getResult());
+//     const commit = await contract.submitTransaction('TransferVote', {
+//         arguments: [voteId, 'Saptha', 'vote1'],
+//     });
 
-    console.log(
-        `*** Successfully submitted transaction to transfer ownership from ${oldOwner} to Saptha`
-    );
-    console.log('*** Waiting for transaction commit');
+//     const status = await commit.getStatus();
+//     if (!status.successful) {
+//         throw new Error(
+//             `Transaction ${
+//                 status.transactionId
+//             } failed to commit with status code ${String(status.code)}`
+//         );
+//     }
 
-    const status = await commit.getStatus();
-    if (!status.successful) {
-        throw new Error(
-            `Transaction ${
-                status.transactionId
-            } failed to commit with status code ${String(status.code)}`
-        );
-    }
+//     console.log('*** Transaction committed successfully');
+// }
 
-    console.log('*** Transaction committed successfully');
-}
+// async function setEndTime(contract, duration) {
+//     let timeStr = await contract.submitTransaction(
+//         'setEndTime',
+//         duration
+//     );
 
-async function readVoteByID(contract) {
-    console.log(
-        '\n--> Evaluate Transaction: ReadAsset, function returns asset attributes'
-    );
+//     timeStr = new Date(timeStr);
+//     console.log(`Setting End Time To: ${timestr}`);
+//     console.log("Voting End Time set Successfully!\n");
+//     // let outString = "Voting End Time Set to: " + timestr;
+//     // response.render(__dirname + "/public/EC-dashboard/ec-set-time.html", { _: outString });
+// }
 
-    const resultBytes = await contract.evaluateTransaction(
-        'ReadVote',
-        voteId
-    );
-
-    const resultJson = utf8Decoder.decode(resultBytes);
-    const result = JSON.parse(resultJson);
-    console.log('*** Result:', result);
-}
-
-/**
- * submitTransaction() will throw an error containing details of any error responses from the smart contract.
- */
-async function updateNonExistentVote(contract) {
-    console.log(
-        '\n--> Submit Transaction: UpdateVote asset70, asset70 does not exist and should return an error'
-    );
-
-    try {
-        await contract.submitTransaction(
-            'UpdateVote',
-            'vote70',
-            'Tomoko'
-        );
-        console.log('******** FAILED to return an error');
-    } catch (error) {
-        console.log('*** Successfully caught the error: \n', error);
-    }
-}
 
 /**
  * envOrDefault() will return the value of an environment variable, or a default value if the variable is undefined.

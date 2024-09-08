@@ -25,10 +25,10 @@ app.use(bodyParser.urlencoded({extended : true}));
 
 
 
-// // Basic route
-// app.get('/', (req, res) => {
-//   res.send('Hello, World!');
-// });
+// Basic route
+app.get('/', (req, res) => {
+  res.send('Hello, World!');
+});
 
 // Start the server
 app.listen(port, () => {
