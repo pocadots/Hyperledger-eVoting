@@ -7,6 +7,13 @@ chaincode/node_modules/
 chaincode/jspm_packages/
 chaincode/package-lock.json
 
-package-lock.json
-test.fabric
+jspm_packages/
 
+package-lock.json
+test.fabric-
+
+# Coverage directory used by tools like istanbul
+coverage
+
+# Report cache used by istanbul
+.nyc_output

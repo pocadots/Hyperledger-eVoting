@@ -1,9 +1,3 @@
-#!/bin/bash
-#
-# Copyright IBM Corp All Rights Reserved
-#
-# SPDX-License-Identifier: Apache-2.0
-#
 # Exit on first error, print commands
 set -e
 set -o pipefail
@@ -35,8 +29,7 @@ echo =======Channel successfully created=======
 
 echo =======Setup successful=======
 
-# Now launch the CLI container in order to install, instantiate chaincode
-# and submit initLedger txn
+# HLF does this automatically in the test network config in v2.5 onwards
 # docker-compose -f ./docker-compose.yml up -d cli
 
 # docker exec -e "CORE_PEER_LOCALMSPID=Org1MSP" -e "CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp" cli peer chaincode install -n thesis -v 1.0 -p "$CC_SRC_PATH" -l "$CC_RUNTIME_LANGUAGE"

@@ -78,12 +78,12 @@ class VoteChain extends Contract {
     }
 
     async queryVote(ctx, voteId){
-        console.info('============= START : queryVote ===========');
+        console.log('============= START : queryVote ===========');
         console.log(`voteId: ${voteId}`);
 
         // if(votestart == false){
-        //   	console.info("Voting has not started yet!");
-        //     console.info('============= END : queryVote ===========');
+        //   	console.log("Voting has not started yet!");
+        //     console.log('============= END : queryVote ===========');
         //     return JSON.stringify({"ownerId":"-2","hasVoted":false});
 
         // }
@@ -91,13 +91,13 @@ class VoteChain extends Contract {
         // get the vote from chaincode state
         const voteQuery = await ctx.stub.getState(voteId); 
         if (!voteQuery || voteQuery.length === 0) {
-            console.info(`${voteId} does not exist!`);            
+            console.log(`${voteId} does not exist!`);            
             return JSON.stringify({"Id":"-1","voteFlag":false});
         }
         let vote = JSON.parse(voteQuery.toString());
         // console.log(vote);
         if(vote.voteFlag == true){
-        console.info('============= END : queryVote ===========');
+        console.log('============= END : queryVote ===========');
         return JSON.stringify(vote);
         }
         else{
@@ -135,7 +135,7 @@ class VoteChain extends Contract {
         if (findOption) {
             throw new Error(`Option ${findOption} already exist`);
         }
-        console.info('===== Attempting to add voting option =====')
+        console.log('===== Attempting to add voting option =====')
         const vote = {
             Id: Id,
             voteFlag: false,
@@ -147,12 +147,12 @@ class VoteChain extends Contract {
             throw new Error(`===== Failed to put vote state: ${err} =====`);
         }
         
-        console.info('===== Vote successfully added =====')
+        console.log('===== Vote successfully added =====')
         return null;
     }
 
     // async CreateVote(ctx, Id) {
-    //     console.info('===== Attempting to create vote object for new voter')
+    //     console.log('===== Attempting to create vote object for new voter')
     //     const vote = {
     //         ownerId: Id,
     //         hasVoted: false,
@@ -173,7 +173,7 @@ class VoteChain extends Contract {
     }
 
     async setEndTime(ctx, timeVal){
-        console.info('===== Setting election closing time =====');
+        console.log('===== Setting election closing time =====');
         // The EC invokes this function to set an end time for the election. 
         // It takes the election duration in minutes as an input, and adds that to 
         // the current time to define the end time. 
@@ -191,13 +191,13 @@ class VoteChain extends Contract {
 
         // votestart = true;
         
-        console.info('===== Successfully set end time =====');
+        console.log('===== Successfully set end time =====', endTime);
 
         return endTime.toString();
     }
 
     async castVote(ctx, voterId, optionId){
-        console.info('======= Attempting to cast vote ======');
+        console.log('======= Attempting to cast vote ======');
         // This function is invoked to change the vote object id to the option the voter chooses and the vote is cast
 
         // Before committing any change it checks:
@@ -213,11 +213,11 @@ class VoteChain extends Contract {
         let curTime = new Date();
 
         // if(votestart!= true){
-        //   	console.info("Voting has not started yet.");
+        //   	console.log("Voting has not started yet.");
         //     return "0";
         // }
         if(curTime.getTime()>endTime.getTime()){
-          	console.info("Voting has ended.");
+          	console.log("Voting has ended.");
             return "1";
         }
 	
@@ -240,7 +240,7 @@ class VoteChain extends Contract {
                         break;
                     }
                 } catch (err){
-                    console.info("voterId not found, maybe you have not registered.")
+                    console.log("voterId not found, maybe you have not registered.")
                     console.log(err);
                     vote = res.value.value.toString('utf8');
                 }
@@ -248,7 +248,7 @@ class VoteChain extends Contract {
             if (res.done){
                 if (voteId == -1){
                     await iterator.close();
-                    console.info('Voter has already voted, exiting without casting vote.');
+                    console.log('Voter has already voted, exiting without casting vote.');
                     return "2";
                 } 
                 await iterator.close();
@@ -274,7 +274,7 @@ class VoteChain extends Contract {
         }
 
         await ctx.stub.putState(voteId, Buffer.from(JSON.stringify(vote)));
-        console.info(`voteId ${voteId} casted successfully.`);
+        console.log(`voteId ${voteId} casted successfully.`);
 
         return null;
     }

@@ -1,5 +1,6 @@
 const grpc = require('@grpc/grpc-js');
 const { connect, signers } = require('@hyperledger/fabric-gateway');
+const exp = require('node:constants');
 const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
@@ -66,7 +67,7 @@ const peerHostAlias = envOrDefault('PEER_HOST_ALIAS', 'peer0.org1.example.com');
 const utf8Decoder = new TextDecoder();
 // const voteId = `vote${String(Date.now())}`;
 
-async function main() {
+async function tryConnect() {
     displayInputParameters();
 
     // The gRPC client connection should be shared by all Gateway connections to this endpoint.
@@ -103,31 +104,34 @@ async function main() {
 
         await setEndTime(contract, duration);
 
-        await getAllVotes(contract);
-
-        await queryVotes(contract, "2");
-
-        await AddVote(contract, "Bob");
-
-        await getAllVotes(contract);
-
-        await castVote(contract, "1", "3");
-
-        await queryVote(contract, "2");
-
-        await queryVote(contract, "3");
-
-        await queryVote(contract, "1");
-
-        await getAllVotes(contract);
-
     } finally {
         gateway.close();
         client.close();
     }
 }
 
-main().catch((error) => {
+
+
+        // 
+
+        // await getAllVotes(contract);
+
+        // await queryVotes(contract, "2");
+
+        // await AddVote(contract, "Bob");
+
+        // await getAllVotes(contract);
+
+        // await castVote(contract, "1", "3");
+
+        // await queryVote(contract, "2");
+
+        // await queryVote(contract, "3");
+
+        // await queryVote(contract, "1");
+
+        // await getAllVotes(contract);
+tryConnect().catch((error) => {
     console.error('******** FAILED to run the application:', error);
     process.exitCode = 1;
 });
@@ -233,10 +237,42 @@ async function generateId() {
 	return uId;
 }
 
-async function castVote(contract, voteId, optionId) {
-    
-    const response = await contract.submitTransaction('castVote', voteId, optionId);
-    
+async function castVote(voteId, optionId) {
+
+    const client = await newGrpcConnection();
+
+    const gateway = connect({
+        client,
+        identity: await newIdentity(),
+        signer: await newSigner(),
+        // Default timeouts for different gRPC calls
+        evaluateOptions: () => {
+            return { deadline: Date.now() + 5000 }; // 5 seconds
+        },
+        endorseOptions: () => {
+            return { deadline: Date.now() + 15000 }; // 15 seconds
+        },
+        submitOptions: () => {
+            return { deadline: Date.now() + 5000 }; // 5 seconds
+        },
+        commitStatusOptions: () => {
+            return { deadline: Date.now() + 60000 }; // 1 minute
+        },
+    });
+
+    try {
+        // Get a network instance representing the channel where the smart contract is deployed.
+        const network = gateway.getNetwork(channelName);
+
+        // Get the smart contract from the network.
+        const contract = network.getContract(chaincodeName);
+
+        await contract.submitTransaction('castVote', voteId, optionId);
+
+    } finally {
+        gateway.close();
+        client.close();
+    }    
 }
 
 /**
@@ -316,3 +352,5 @@ function displayInputParameters() {
     console.log(`peerEndpoint:      ${peerEndpoint}`);
     console.log(`peerHostAlias:     ${peerHostAlias}`);
 }
+
+module.exports = { castVote };
