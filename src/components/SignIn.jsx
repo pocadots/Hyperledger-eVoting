@@ -1,4 +1,5 @@
 import React from 'react'
+import { NavLink } from 'react-router-dom'
 
 const SignIn = () => {
     return (
@@ -23,11 +24,11 @@ const SignIn = () => {
                         </svg>
                     </div>
                     <div class="!mt-8">
-                        <button type="button" className="w-full py-3 px-4 text-sm tracking-wide rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
+                        <button type="submit" className="w-full py-3 px-4 text-sm tracking-wide rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
                             Sign in
                         </button>
                     </div>
-                    <p class="text-gray-800 text-sm !mt-8 text-center">Don't have an account? <a href="javascript:void(0);" className="text-blue-600 hover:underline ml-1 whitespace-nowrap font-semibold">Register here</a></p>
+                    <p class="text-gray-800 text-sm !mt-8 text-center">Don't have an account? <NavLink to="/SignUp" className="text-blue-600 hover:underline ml-1 whitespace-nowrap font-semibold">Register here</NavLink></p>
                 </form>
             </div>
         </div>

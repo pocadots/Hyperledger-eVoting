@@ -67,9 +67,7 @@ const peerHostAlias = envOrDefault('PEER_HOST_ALIAS', 'peer0.org1.example.com');
 const utf8Decoder = new TextDecoder();
 // const voteId = `vote${String(Date.now())}`;
 
-async function tryConnect() {
-    displayInputParameters();
-
+async function connectToFabric() {
     // The gRPC client connection should be shared by all Gateway connections to this endpoint.
     const client = await newGrpcConnection();
 
@@ -92,13 +90,20 @@ async function tryConnect() {
         },
     });
 
+    // Get a network instance representing the channel where the smart contract is deployed.
+    const network = gateway.getNetwork(channelName);
+
+    // Get the smart contract from the network.
+    const contract = network.getContract(chaincodeName);
+
+    return {contract, gateway, client};
+}
+
+async function tryConnect() {
+    const {contract, gateway, client} = await connectToBlockchain();
+    displayInputParameters();
+
     try {
-        // Get a network instance representing the channel where the smart contract is deployed.
-        const network = gateway.getNetwork(channelName);
-
-        // Get the smart contract from the network.
-        const contract = network.getContract(chaincodeName);
-
         // Initialize a set of asset data on the ledger using the chaincode 'InitLedger' function.
         await InitLedger(contract);
 
@@ -238,34 +243,9 @@ async function generateId() {
 }
 
 async function castVote(voteId, optionId) {
-
-    const client = await newGrpcConnection();
-
-    const gateway = connect({
-        client,
-        identity: await newIdentity(),
-        signer: await newSigner(),
-        // Default timeouts for different gRPC calls
-        evaluateOptions: () => {
-            return { deadline: Date.now() + 5000 }; // 5 seconds
-        },
-        endorseOptions: () => {
-            return { deadline: Date.now() + 15000 }; // 15 seconds
-        },
-        submitOptions: () => {
-            return { deadline: Date.now() + 5000 }; // 5 seconds
-        },
-        commitStatusOptions: () => {
-            return { deadline: Date.now() + 60000 }; // 1 minute
-        },
-    });
+    const {contract, gateway, client} = await connectToBlockchain();
 
     try {
-        // Get a network instance representing the channel where the smart contract is deployed.
-        const network = gateway.getNetwork(channelName);
-
-        // Get the smart contract from the network.
-        const contract = network.getContract(chaincodeName);
 
         await contract.submitTransaction('castVote', voteId, optionId);
 
@@ -292,18 +272,6 @@ async function castVote(voteId, optionId) {
 //     console.log('*** Transaction committed successfully');
 // }
 
-/**
- * Submit transaction asynchronously, allowing the application to process the smart contract response (e.g. update a UI)
- * while waiting for the commit notification.
- */
-// async function TransferVote(contract) {
-//     console.log(
-//         '\n--> Async Submit Transaction: TransferVote, updates existing vote owner'
-//     );
-
-//     const commit = await contract.submitTransaction('TransferVote', {
-//         arguments: [voteId, 'Saptha', 'vote1'],
-//     });
 
 //     const status = await commit.getStatus();
 //     if (!status.successful) {
@@ -317,18 +285,7 @@ async function castVote(voteId, optionId) {
 //     console.log('*** Transaction committed successfully');
 // }
 
-// async function setEndTime(contract, duration) {
-//     let timeStr = await contract.submitTransaction(
-//         'setEndTime',
-//         duration
-//     );
 
-//     timeStr = new Date(timeStr);
-//     console.log(`Setting End Time To: ${timestr}`);
-//     console.log("Voting End Time set Successfully!\n");
-//     // let outString = "Voting End Time Set to: " + timestr;
-//     // response.render(__dirname + "/public/EC-dashboard/ec-set-time.html", { _: outString });
-// }
 
 
 /**

@@ -5,7 +5,7 @@ import HomePage from './pages/HomePage';
 import MainLayout from './layout/MainLayout';
 import OptionsPage from './pages/OptionsPage';
 import DashboardPage from './pages/DashboardPage';
-
+import SignUpPage from './pages/SignUp';
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -13,21 +13,15 @@ const router = createBrowserRouter(
       <Route index element={<HomePage />} />
       <Route path='/voting' element={<OptionsPage />} />
       <Route path='/dashboard' element={<DashboardPage />} />
+      <Route path='/SignUp' element={<SignUpPage />} />
     </Route>
   )
 );
 
 const App = () => {
-
-  // state = {
-  //   fruit: [],
-  // };
-  // const [count, setCount] = useState(0);
-  // const [array, setArray] = useState([]);
   const apiCall = () => {
     axios.get('/api').then((data) => {
       console.log(data);
-      // this.setState({ fruit: response.data });
     })
   }
   
