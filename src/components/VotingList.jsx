@@ -39,8 +39,8 @@ const VotingList = () => {
             <div id="option" className="">
               {VoteOptions.map((option) =>
                 <p>
-                  <span className='mr-80'> {option.description} </span>
-                  <input className='w-4 h-4' type='radio' name='optionId' value={option.id} required />
+                  <span className='flex items-center mr-80'> {option.description} </span>
+                  <input className='flex justify-end w-4 h-4' type='radio' name='optionId' value={option.id} required />
                 </p>
               )}
             </div>

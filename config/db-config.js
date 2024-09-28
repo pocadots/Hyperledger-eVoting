@@ -37,6 +37,13 @@ const initializeData = async () => {
                 organization: 'org1',
                 role: 'user'
             },
+            {
+                username: 'user2',
+                password: 'user2',
+                id: '2',
+                organization: 'org1',
+                role: 'user'
+            },
         ];
 
         for (let userData of initialData) {

@@ -65,7 +65,6 @@ const peerEndpoint = envOrDefault('PEER_ENDPOINT', 'localhost:7051');
 const peerHostAlias = envOrDefault('PEER_HOST_ALIAS', 'peer0.org1.example.com');
 
 const utf8Decoder = new TextDecoder();
-// const voteId = `vote${String(Date.now())}`;
 
 async function connectToFabric() {
     // The gRPC client connection should be shared by all Gateway connections to this endpoint.
@@ -100,34 +99,23 @@ async function connectToFabric() {
 }
 
 async function tryConnect() {
-    const {contract, gateway, client} = await connectToBlockchain();
+    const {contract, gateway, client} = await connectToFabric();
     displayInputParameters();
 
     try {
         // Initialize a set of asset data on the ledger using the chaincode 'InitLedger' function.
         await InitLedger(contract);
 
-        await setEndTime(contract, duration);
-
     } finally {
         gateway.close();
         client.close();
     }
 }
-
-
-
-        // 
-
         // await getAllVotes(contract);
 
         // await queryVotes(contract, "2");
 
-        // await AddVote(contract, "Bob");
-
         // await getAllVotes(contract);
-
-        // await castVote(contract, "1", "3");
 
         // await queryVote(contract, "2");
 
@@ -185,9 +173,16 @@ async function InitLedger(contract) {
     console.log('*** Transaction committed successfully');
 }
 
-async function setEndTime(contract, timeVal) {
-    console.log('setting end time of election');
-    await contract.submitTransaction('setEndTime', timeVal);
+async function setEndTime(timeVal) {
+    const { contract, gateway, client } = await connectToFabric();
+
+    try {
+        console.log('setting end time of election');
+        await contract.submitTransaction('setEndTime', timeVal.toString());
+    } finally {
+        gateway.close();
+        client.close();
+    }
 
     console.log('time set successfully');
 }
@@ -195,55 +190,56 @@ async function setEndTime(contract, timeVal) {
 /**
  * Evaluate a transaction to query ledger state.
  */
-async function queryVotes(contract, optionId) {
+// async function queryVotes(contract, optionId) {
 
-    const resultBytes = await contract.evaluateTransaction('queryVotes', optionId);
+//     const resultBytes = await contract.evaluateTransaction('queryVotes', optionId);
 
-    const resultJson = utf8Decoder.decode(resultBytes);
-    const result = JSON.parse(resultJson);
-    console.log('*** Votes Result:', result);
+//     const resultJson = utf8Decoder.decode(resultBytes);
+//     const result = JSON.parse(resultJson);
+//     console.log('*** Votes Result:', result);
+// }
+
+// async function queryVote(contract, optionId) {
+
+//     const resultBytes = await contract.evaluateTransaction('queryVote', optionId);
+
+//     const resultJson = utf8Decoder.decode(resultBytes);
+//     const result = JSON.parse(resultJson);
+//     console.log('*** Votes Result:', result);
+// }
+
+async function getResults() {
+    const { contract, gateway, client } = await connectToFabric();
+    try {
+        const resultBytes = await contract.evaluateTransaction('getResults');
+
+        const resultJson = utf8Decoder.decode(resultBytes);
+        const result = JSON.parse(resultJson);
+        console.log('*** AllVotes Result:', result);
+
+        return result;
+
+    } finally {
+        gateway.close();
+        client.close();
+    }
 }
 
-async function queryVote(contract, optionId) {
+async function addVote(voteId) {
+    const {contract, gateway, client} = await connectToFabric();
 
-    const resultBytes = await contract.evaluateTransaction('queryVote', optionId);
+    try {
 
-    const resultJson = utf8Decoder.decode(resultBytes);
-    const result = JSON.parse(resultJson);
-    console.log('*** Votes Result:', result);
-}
+        await contract.submitTransaction('addVote', voteId);
 
-async function getAllVotes(contract) {
-
-    const resultBytes = await contract.evaluateTransaction('getAllVotes');
-
-    const resultJson = utf8Decoder.decode(resultBytes);
-    const result = JSON.parse(resultJson);
-    console.log('*** AllVotes Result:', result);
-}
-
-async function AddVote(contract, Name) {
-    const voteId = await generateId();
-    
-    const response = await contract.submitTransaction('AddVote', voteId);
-    
-}
-
-// Generate the option ID
-async function generateId() {	
-    let uId = "";
-	const chars = '0123456789'; // List of digits
-
-	for (let i = 0; i < 16; i++) {
-		const randomIndex = Math.floor(Math.random() * chars.length);
-		uId += chars.charAt(randomIndex);
-	}
-
-	return uId;
+    } finally {
+        gateway.close();
+        client.close();
+    }  
 }
 
 async function castVote(voteId, optionId) {
-    const {contract, gateway, client} = await connectToBlockchain();
+    const {contract, gateway, client} = await connectToFabric();
 
     try {
 
@@ -254,38 +250,6 @@ async function castVote(voteId, optionId) {
         client.close();
     }    
 }
-
-/**
- * Submit a transaction synchronously, blocking until it has been committed to the ledger.
- */
-// async function CreateVote(contract) {
-//     console.log(
-//         '\n--> Submit Transaction: createVote, creates new asset with ID, Color, Size, Owner and AppraisedValue arguments'
-//     );
-//     let voteId = { Id: 6 };
-
-//     await contract.submitTransaction(
-//         'CreateVote',
-//         voteId,
-//     );
-
-//     console.log('*** Transaction committed successfully');
-// }
-
-
-//     const status = await commit.getStatus();
-//     if (!status.successful) {
-//         throw new Error(
-//             `Transaction ${
-//                 status.transactionId
-//             } failed to commit with status code ${String(status.code)}`
-//         );
-//     }
-
-//     console.log('*** Transaction committed successfully');
-// }
-
-
 
 
 /**
@@ -310,4 +274,4 @@ function displayInputParameters() {
     console.log(`peerHostAlias:     ${peerHostAlias}`);
 }
 
-module.exports = { castVote };
+module.exports = { addVote, castVote, setEndTime, getResults };

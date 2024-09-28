@@ -6,15 +6,16 @@ const session = require('express-session');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
-const fs = require('fs');
+// const fs = require('fs');
 const axios = require('axios');
+const bcrypt = require("bcrypt");
+
 const connectDB = require("./config/db-config");
 const User = require("./models/user");
-const bcrypt = require("bcrypt");
 const Option = require("./models/option");
 
 // Hyperledger Fabric connection, comment out during development to disengage the blockchain network component
-// const connect = require('./crypto/connect');
+const connect = require('./crypto/connect');
 
 const app = express();
 const port = process.env.PORT || '3003';;
@@ -31,94 +32,37 @@ app.use(session({
 app.use(bodyParser.urlencoded({extended : true}));
 app.use(express.static(path.join(__dirname, ".", "build")));
 
-// let Users;
-// fs.readFile("./users.json", "utf8", (error, data) => {
-// 	if (error) {
-// 	  console.log(error);
-// 	  return;
-// 	}
-// 	Users = JSON.parse(data);
-// 	// console.log(Users);
-//   });
-
 // connect to db
 connectDB();
 
-// Backend routes
-app.get("/api/opt", async (req, res) => {
-	try {
-		const { data } = await axios.get(END_POINT);
-		res.status(200).send(data);
-	  } catch(ex) {
-		res.status(500).send(ex.data);
-	  }
-});
+//Middleware Helpers
+function isAuthenticated(req, res, next) {
+    if (req.session.username) {
+        return next();
+    }
+    res.redirect("/");
+}
 
-app.post("/SignIn", async (req, res) => {
-	try {
-		const { username, password } = req.body;
-		const user = await User.findOne({ username: username });
-		if (!user) return res.status(401).send("Invalid username.");
+function isNotAuthenticated(req, res, next) {
+    if (!(req.session.username)) {
+        return next();
+    }
+    res.redirect("/voting");
+}
 
-		const isMatch = await bcrypt.compare(password, user.password);
-		if (!isMatch) return res.status(401).send("Invalid password.");
+function isAdminSeeking(req, res, next) {
+    if (req.session.role === 'admin') {
+        return next();
+    }
+    res.redirect("/voting")
+}
 
-		req.session.loggedin = true;
-		req.session.username = username;
-		req.session.userId = user.id;
-		
-		console.log('Successful sign in...');
-		res.redirect("/voting");
-
-	} catch (err) {
-		console.error("Error signing in:", err);
-		res.status(500).send("Error signing in.");
-	}
-
-	// 	for (let i = 0; i<Users.length; i++)
-	// 		if (Users[i].username == username){
-    //             if (Users[i].password != password){
-	// 				console.log("Invalid password:\n")
-    //                 return res.status(401).json({ message: "Invalid password" });
-
-    //             } else {
-    //                 console.log("Identity Verified!\n");
-    //                 req.session.loggedin = true;
-    //                 req.session.username = username;
-	// 				req.session.userId = Users[i].userId;
-	// 				// console.log(req.session.username, req.session.userId);
-	// 				res.redirect("/voting");
-    //                 break;
-    //             }
-    //         }
-	// } catch (error) {
-	// 	console.log(error);
-	// }
-});
-
-
-// User authenticate/sign up
-app.post("/SignUp/submit", async (req, res) => {
-	try {
-		const { username, password } = req.body;
-		const id = await generateId();
-
-		//check duplicate username
-		const user = await User.findOne({ username: username });
-		if (user) return res.status(401).send("Username already in use.");
-
-		const newUser = new User({ username, password, id });
-		await newUser.save();
-
-		// res.status(201).send("User registered successfully");
-		console.log("Successfully registered user:", username);
-		res.redirect('/');
-		
-	} catch (err) {
-		console.error("Error signing up:", err);
-		res.status(500).send("Error signing up.");
-	}
-})
+function isUserSeeking(req, res, next) {
+    if (req.session.role !== 'admin') {
+        return next();
+    }
+    res.redirect("/dashboard")
+}
 
 function generateId() {	
     let uId = "";
@@ -132,36 +76,129 @@ function generateId() {
 	return uId;
 }
 
+// Backend routes
+app.get("/api/opt", async (req, res) => {
+	try {
+		const { data } = await axios.get(END_POINT);
+		res.status(200).send(data);
+	  } catch(ex) {
+		res.status(500).send(ex.data);
+	  }
+});
+
+app.post("/SignIn", isNotAuthenticated, async (req, res) => {
+	try {
+		const { username, password } = req.body;
+		const user = await User.findOne({ username: username });
+		if (!user) return res.status(401).send("Invalid username.");
+
+		const isMatch = await bcrypt.compare(password, user.password);
+		if (!isMatch) return res.status(401).send("Invalid password.");
+
+		req.session.loggedin = true;
+		req.session.username = username;
+		req.session.userId = user.id;
+		req.session.role = user.role;
+
+		console.log('Successful sign in...');
+
+		if (req.session.role === 'admin') {
+			res.redirect('/dashboard');
+		} else {
+			res.redirect("/voting");
+		}
+	} catch (err) {
+		console.error("Error signing in:", err);
+		res.status(500).send("Error signing in.");
+	}
+});
+
+
+// User authenticate/sign up
+app.post("/SignUp/submit", isNotAuthenticated, async (req, res) => {
+	try {
+		const { username, password } = req.body;
+		const id = await generateId();
+
+		//check duplicate username
+		const user = await User.findOne({ username: username });
+		if (user) return res.status(401).send("Username already in use.");
+
+		const newUser = new User({ username, password, id });
+		await newUser.save();
+
+		// create a vote object with the new user's id in the fabric network
+		await connect.addVote(id);
+
+		// res.status(201).send("User registered successfully");
+		console.log("Successfully registered user:", username);
+		res.redirect('/');
+		
+	} catch (err) {
+		console.error("Error signing up:", err);
+		res.status(500).send("Error signing up.");
+	}
+})
+
+app.post("/SignOut", isAuthenticated, async (req, res, next) => {
+	try {
+		if (req.session) {
+			req.session.destroy(function (err) {
+				console.log('Sign out successful.')
+			})
+			// res.redirect('/');
+			return next();
+		}
+	} catch (err) {
+		console.log("Error signing out.", err);
+		res.status(500).send("Error signing out.");
+	}
+})
+
 // ===================================
 
-app.post("/voting/submit", async (req, res) => { 
+app.post("/voting/submit", isAuthenticated, isUserSeeking, async (req, res) => { 
 	const userId = req.session.userId;
 	const optionId = req.body.optionId;
-	// console.log('so far so good', userId, optionId);
+	console.log('so far so good', userId, optionId);
 
 	await connect.castVote(userId, optionId);
 
 	res.redirect("/voting");
 });
 
-app.post("/dashboard/addOption", async (req, res) => {
+app.post("/dashboard/addOption", isAuthenticated, isAdminSeeking, async (req, res) => {
 	try {
-		let options;
-		fs.readFile("./src/components/options.json", "utf8", (error, response) => {
-			if (error) {
-				console.log(error);
-				return;
-			}
-			options = JSON.parse(response);
-			console.log(options);
-			options.push(req.body);
-			fs.writeFileSync("./src/components/options.json", JSON.stringify(options));
-			res.redirect("/dashboard");
-		})
+		console.log(req.body);
+		const { description } = req.body;
+		const id = await generateId();
+
+		//check duplicate username
+		const options = await Option.findOne({ description : description });
+		if (options) return res.status(401).send("Option already registered in election.");
+
+		const newOption = new Option({ id, description });
+		await newOption.save();
+
+		console.log("Successfully registered option:", description);
+		res.redirect("/dashboard");
+
 	} catch (err) {
 		console.log(err);
 	}
 
+});
+
+app.post('/dashboard/addDate', isAuthenticated, isAdminSeeking, async (req, res) => {
+	try {
+		const { duration } = req.body;
+		const endDate = new Date(duration).getTime();
+		console.log(endDate);
+		await connect.setEndTime(endDate);
+		res.redirect('/dashboard');
+	} catch (err) {
+		console.log('Error adding date:', err);
+	}
 });
 
 // Fetch and forward the voting list data from mongoDB
@@ -174,6 +211,18 @@ app.get('/api/voting', (req, res) => {
        })
 	  .catch((error) => res.send(error));
   });
+
+// Fetch voting results
+app.get('/api/results', async (req, res) => {
+	try {
+		const results = await connect.getResults();
+		console.log(results);
+		res.send(results);
+
+	} catch (err) {
+		console.log('Error getting results from blockchain:', err);
+	}
+});
   
 
 //Let React frontend handle other routes
@@ -185,3 +234,6 @@ app.use((req, res, next) => {
 app.listen(port, () => {
   console.log(`Congratulations!  The Server is running on http://localhost:${port}`);
 });        
+
+
+module.exports = { isAuthenticated, isNotAuthenticated, isAdminSeeking, isUserSeeking };

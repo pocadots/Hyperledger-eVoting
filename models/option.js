@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const optionSchema = new mongoose.Schema({
-    id: {type: String},
+    id: { type: String, required: true },
 	description: { type: String }
 });
 

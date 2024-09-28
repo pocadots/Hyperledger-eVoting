@@ -6,29 +6,12 @@ const sortKeysRecursive  = require('sort-keys-recursive');
 const { Contract } = require('fabric-contract-api');
 
 let endTime;
+let voteStart = false;
 
 class VoteChain extends Contract {
 
     // InitLedger initializes the chaincode state with a few sample voting options
     async InitLedger(ctx) {
-        // const options = [
-        //     {
-        //         Id: "1",
-        //         Name: "George",
-        //     },
-        //     {
-        //         Id: "2",
-        //         Name: "Sample1",
-        //     },
-        //     {
-        //         Id: "3",
-        //         Name: "Sample2",
-        //     },
-        //     {
-        //         Id: "4",
-        //         Name: "Sample2",
-        //     },
-        // ];
 
         const votes = [
             {
@@ -37,23 +20,14 @@ class VoteChain extends Contract {
             },
             {
                 Id: "2",
-                voteFlag: true,
-            },
-            {
-                Id: "3",
                 voteFlag: false,
-            },
+            }
         ]
 
         // write to world state deterministically
         // use convetion of alphabetic order
         // we insert data in alphabetic order using 'json-stringify-deterministic' and 'sort-keys-recursive'
         // when retrieving data, in any lang, the order of data will be the same and consequently also the corresonding hash
-
-        // for (const option of options) {
-        //     option.docType = 'option';    
-        //     await ctx.stub.putState(option.Id, Buffer.from(stringify(sortKeysRecursive(option))));
-        // }
         
         for (const vote of votes) {
             vote.docType = 'vote';
@@ -68,13 +42,13 @@ class VoteChain extends Contract {
             throw new Error("===== Vote doesn't exist =====");
         }
 
-        let votes;
+        let results;
         try {
-            votes = JSON.parse(voteJSON.toString());
+            results = JSON.parse(voteJSON.toString());
         } catch (err) {
             throw new Error(`===== Failed to parse vote JSON: ${err} =====`);
         }
-        return votes;
+        return results;
     }
 
     async queryVote(ctx, voteId){
@@ -106,10 +80,10 @@ class VoteChain extends Contract {
             }
     }
 
-    // getAllVotes returns all vote objects
-    async getAllVotes(ctx) {
+    // getResults returns all vote objects
+    async getResults(ctx) {
         const iterator = await ctx.stub.getStateByRange("", "");
-        const votes = [];
+        const results = [];
 
         try {
             while (true) {
@@ -118,7 +92,22 @@ class VoteChain extends Contract {
                     break;
                 }
                 const vote = JSON.parse(result.value.value.toString());
-                votes.push(vote);
+
+                if (vote.voteFlag == true) {
+                    //add to the results list if not already there
+                    if (!(results.some(item => item.optionId == vote.Id))) {
+                        let newOption = { "optionId": vote.Id, "voteCount": 1 };
+                        results.push(newOption);
+                    } else {
+                        //if already in list, increment by 1
+                        for (let i = 0; i < results.length; i++) {
+                            if (vote.Id == results[i].optionId) {
+                                results[i].voteCount += 1;
+                            }
+                        }
+                    }
+                }
+                results.push(vote);
             }
         } catch (err) {
             throw new Error(`===== Failed to get from world state: ${err} =====`);
@@ -126,16 +115,16 @@ class VoteChain extends Contract {
             await iterator.close();
         }
 
-        return JSON.stringify(votes);;
+        return JSON.stringify(results);;
     }
 
     // AddVote adds a new vote object to the ledger
-    async AddVote(ctx, Id) {
+    async addVote(ctx, Id) {
         const findOption = await this.queryExists(ctx, Id);
         if (findOption) {
             throw new Error(`Option ${findOption} already exist`);
         }
-        console.log('===== Attempting to add voting option =====')
+        console.log('===== Attempting to add voting option =====');
         const vote = {
             Id: Id,
             voteFlag: false,
@@ -147,25 +136,10 @@ class VoteChain extends Contract {
             throw new Error(`===== Failed to put vote state: ${err} =====`);
         }
         
-        console.log('===== Vote successfully added =====')
+        console.log('===== Vote successfully added =====');
         return null;
     }
 
-    // async CreateVote(ctx, Id) {
-    //     console.log('===== Attempting to create vote object for new voter')
-    //     const vote = {
-    //         ownerId: Id,
-    //         hasVoted: false,
-    //     };
-
-    //     // const voteJSON = JSON.stringify(vote);
-    //     // Put vote object to ledger
-    //     try {
-    //         await ctx.stub.putState(vote.ownerId, Buffer.from(JSON.stringify(vote)));
-    //     } catch (err) {
-    //         throw new Error(`===== Failed to put vote object state: ${err} =====`);
-    //     }
-    // }
 
     async queryExists(ctx, Id) {
         const user = await ctx.stub.getState(Id);
@@ -184,12 +158,13 @@ class VoteChain extends Contract {
         // After the end time is set, voters are allowed to cast their votes. However, untill 
         // the end time elapses, all query functions are blocked.
 
-        let curDate = new Date();
+        // let curDate = new Date();
 
-        curDate = curDate.setTime(curDate.getTime()+ parseInt(timeVal)*60*1000);
-        endTime = new Date(curDate);
+        // curDate = curDate.setTime(curDate.getTime()+ parseInt(timeVal)*60*1000);
+        let duration = new Date(endTime).setTime(parseInt(timeVal));
+        endTime = new Date(duration);
 
-        // votestart = true;
+        voteStart = true;
         
         console.log('===== Successfully set end time =====', endTime);
 
@@ -212,10 +187,10 @@ class VoteChain extends Contract {
 
         let curTime = new Date();
 
-        // if(votestart!= true){
-        //   	console.log("Voting has not started yet.");
-        //     return "0";
-        // }
+        if(voteStart!= true){
+          	console.log("Voting has not started yet.");
+            return "0";
+        }
         if(curTime.getTime()>endTime.getTime()){
           	console.log("Voting has ended.");
             return "1";
@@ -263,7 +238,7 @@ class VoteChain extends Contract {
         }
         let vote = JSON.parse(voteState.toString());
       
-      	/*Set the ownerId to the CandidateId of the preffered candidate, and set 
+      	/*Set the ownerId to the option id of the voter's choice, and set 
       	hasVoted to true.*/
       
         if (vote.voteFlag != true){
