@@ -35,50 +35,51 @@ class VoteChain extends Contract {
         }
     }
 
-    // queryVotes retrieves the vote count for a specific option
-    async queryVotes(ctx, voteId) {
-        const voteJSON = await ctx.stub.getState(voteId);
-        if (!voteJSON) {
-            throw new Error("===== Vote doesn't exist =====");
-        }
+    // Unused chaincode for future uses
+    // // queryVotes retrieves the vote count for a specific option
+    // async queryVotes(ctx, voteId) {
+    //     const voteJSON = await ctx.stub.getState(voteId);
+    //     if (!voteJSON) {
+    //         throw new Error("===== Vote doesn't exist =====");
+    //     }
 
-        let results;
-        try {
-            results = JSON.parse(voteJSON.toString());
-        } catch (err) {
-            throw new Error(`===== Failed to parse vote JSON: ${err} =====`);
-        }
-        return results;
-    }
+    //     let results;
+    //     try {
+    //         results = JSON.parse(voteJSON.toString());
+    //     } catch (err) {
+    //         throw new Error(`===== Failed to parse vote JSON: ${err} =====`);
+    //     }
+    //     return results;
+    // }
 
-    async queryVote(ctx, voteId){
-        console.log('============= START : queryVote ===========');
-        console.log(`voteId: ${voteId}`);
+    // async queryVote(ctx, voteId){
+    //     console.log('============= START : queryVote ===========');
+    //     console.log(`voteId: ${voteId}`);
 
-        // if(votestart == false){
-        //   	console.log("Voting has not started yet!");
-        //     console.log('============= END : queryVote ===========');
-        //     return JSON.stringify({"ownerId":"-2","hasVoted":false});
+    //     // if(votestart == false){
+    //     //   	console.log("Voting has not started yet!");
+    //     //     console.log('============= END : queryVote ===========');
+    //     //     return JSON.stringify({"ownerId":"-2","hasVoted":false});
 
-        // }
+    //     // }
 
-        // get the vote from chaincode state
-        const voteQuery = await ctx.stub.getState(voteId); 
-        if (!voteQuery || voteQuery.length === 0) {
-            console.log(`${voteId} does not exist!`);            
-            return JSON.stringify({"Id":"-1","voteFlag":false});
-        }
-        let vote = JSON.parse(voteQuery.toString());
-        // console.log(vote);
-        if(vote.voteFlag == true){
-        console.log('============= END : queryVote ===========');
-        return JSON.stringify(vote);
-        }
-        else{
-            console.log(`Vote ${voteId} has not been cast yet.`);
-            return JSON.stringify({"Id":"-1","voteFlag":false});   
-            }
-    }
+    //     // get the vote from chaincode state
+    //     const voteQuery = await ctx.stub.getState(voteId); 
+    //     if (!voteQuery || voteQuery.length === 0) {
+    //         console.log(`${voteId} does not exist!`);            
+    //         return JSON.stringify({"Id":"-1","voteFlag":false});
+    //     }
+    //     let vote = JSON.parse(voteQuery.toString());
+    //     // console.log(vote);
+    //     if(vote.voteFlag == true){
+    //     console.log('============= END : queryVote ===========');
+    //     return JSON.stringify(vote);
+    //     }
+    //     else{
+    //         console.log(`Vote ${voteId} has not been cast yet.`);
+    //         return JSON.stringify({"Id":"-1","voteFlag":false});   
+    //         }
+    // }
 
     // getResults returns all vote objects
     async getResults(ctx) {
@@ -107,7 +108,7 @@ class VoteChain extends Contract {
                         }
                     }
                 }
-                results.push(vote);
+                // results.push(vote); //remove after testing 
             }
         } catch (err) {
             throw new Error(`===== Failed to get from world state: ${err} =====`);
@@ -158,9 +159,6 @@ class VoteChain extends Contract {
         // After the end time is set, voters are allowed to cast their votes. However, untill 
         // the end time elapses, all query functions are blocked.
 
-        // let curDate = new Date();
-
-        // curDate = curDate.setTime(curDate.getTime()+ parseInt(timeVal)*60*1000);
         let duration = new Date(endTime).setTime(parseInt(timeVal));
         endTime = new Date(duration);
 
@@ -198,8 +196,6 @@ class VoteChain extends Contract {
 	
       	// Finding the voteId of the vote object owned by the voter.
         let voteId = -1;
-        // const startKey = '0';
-        // const endKey = (voteId+1).toString();
         const iterator = await ctx.stub.getStateByRange("", "");
 
         while(true){

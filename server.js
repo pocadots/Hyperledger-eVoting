@@ -6,7 +6,6 @@ const session = require('express-session');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
-// const fs = require('fs');
 const axios = require('axios');
 const bcrypt = require("bcrypt");
 
@@ -21,7 +20,6 @@ const app = express();
 const port = process.env.PORT || '3003';;
 
 // Middleware setup
-// app.use(cors());
 app.use(cors( { origin: '*'}));
 app.use(bodyParser.json());
 app.use(session({
@@ -146,7 +144,6 @@ app.post("/SignOut", isAuthenticated, async (req, res, next) => {
 			req.session.destroy(function (err) {
 				console.log('Sign out successful.')
 			})
-			// res.redirect('/');
 			return next();
 		}
 	} catch (err) {
@@ -160,7 +157,6 @@ app.post("/SignOut", isAuthenticated, async (req, res, next) => {
 app.post("/voting/submit", isAuthenticated, isUserSeeking, async (req, res) => { 
 	const userId = req.session.userId;
 	const optionId = req.body.optionId;
-	console.log('so far so good', userId, optionId);
 
 	await connect.castVote(userId, optionId);
 
@@ -206,7 +202,6 @@ app.get('/api/voting', (req, res) => {
 	Option
 	  .find()
 	  .then((response) => {
-		// console.log(response);
 		res.send(response);
        })
 	  .catch((error) => res.send(error));
@@ -216,9 +211,13 @@ app.get('/api/voting', (req, res) => {
 app.get('/api/results', async (req, res) => {
 	try {
 		const results = await connect.getResults();
-		console.log(results);
-		res.send(results);
 
+		await Promise.all(results.map(async (element) => {
+			const optionName = await Option.findOne({ id: element.optionId }, 'description');
+			element.optionName = optionName.description;
+		}));
+
+		res.send(results);
 	} catch (err) {
 		console.log('Error getting results from blockchain:', err);
 	}

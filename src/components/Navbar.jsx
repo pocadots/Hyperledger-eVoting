@@ -6,11 +6,6 @@ import axios from 'axios';
 const Navbar = () => {
   const navigate = useNavigate();
 
-  // const linkclassName = ({ isActive }) =>
-  //   isActive
-  //     ? 'bg-black text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2'
-  //     : 'text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2';
-
   const handleSubmit = async (e) => {
    await axios.post('/SignOut')
       .then(res => {

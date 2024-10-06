@@ -1,9 +1,6 @@
 import React from 'react'
 
 const Dashboard = () => {
-  // const handleSubmit = (event) => {
-  //   alert("Woohoo!");
-  // }
 
   return (
     <div className="bg-gray-700 font-sans overflow-x-auto min-h-screen">

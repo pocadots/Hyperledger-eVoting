@@ -3,7 +3,6 @@ import axios from 'axios';
 
 const VotingList = () => {
   const [loading, setLoading] = useState(true);
-  // const [VoteOptions, setVoteOptions] = useState([{ id: '', description: ''}]);
   const [VoteOptions, setVoteOptions] = useState([]);
 
   useEffect(() => {
@@ -29,7 +28,7 @@ const VotingList = () => {
 
   return (
     <div className='bg-gray-700 min-h-screen flex flex-col'>
-      <h1 className='text-3xl text-white mb-8 content-' align="center">Hyperledger voting demo</h1>
+      <h1 className='text-3xl text-white mb-8 content-' align="center">Hyperledger Voting</h1>
       {/* <h3 className='text-white' align="center"><p>Voting Dates: <span id="dates"></span></p></h3> */}
       <br />
       {loading && <div>Loading</div>}

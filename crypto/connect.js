@@ -111,19 +111,7 @@ async function tryConnect() {
         client.close();
     }
 }
-        // await getAllVotes(contract);
 
-        // await queryVotes(contract, "2");
-
-        // await getAllVotes(contract);
-
-        // await queryVote(contract, "2");
-
-        // await queryVote(contract, "3");
-
-        // await queryVote(contract, "1");
-
-        // await getAllVotes(contract);
 tryConnect().catch((error) => {
     console.error('******** FAILED to run the application:', error);
     process.exitCode = 1;
@@ -187,26 +175,6 @@ async function setEndTime(timeVal) {
     console.log('time set successfully');
 }
 
-/**
- * Evaluate a transaction to query ledger state.
- */
-// async function queryVotes(contract, optionId) {
-
-//     const resultBytes = await contract.evaluateTransaction('queryVotes', optionId);
-
-//     const resultJson = utf8Decoder.decode(resultBytes);
-//     const result = JSON.parse(resultJson);
-//     console.log('*** Votes Result:', result);
-// }
-
-// async function queryVote(contract, optionId) {
-
-//     const resultBytes = await contract.evaluateTransaction('queryVote', optionId);
-
-//     const resultJson = utf8Decoder.decode(resultBytes);
-//     const result = JSON.parse(resultJson);
-//     console.log('*** Votes Result:', result);
-// }
 
 async function getResults() {
     const { contract, gateway, client } = await connectToFabric();

@@ -39,10 +39,8 @@ const Results = () => {
                     {VoteResults.map((option) =>
                         <tr class="bg-gray-700 border-b dark:bg-gray-800 dark:border-gray-700">
 
-                            <p>
-                                <td scope="row" class="px-6 py-4 font-medium text-gray-600 whitespace-nowrap dark:text-white"> {option.optionId} </td>
-                                <td class="px-6 py-4" > {option.voteCount} </td>
-                            </p>
+                                <th scope="row" class="px-6 py-4 font-medium text-gray-600 whitespace-nowrap dark:text-white"> {option.optionName} </th>
+                                <td class="px-6 py-4 text-gray-500" > {option.voteCount} </td>
 
                         </tr>
                     )}
