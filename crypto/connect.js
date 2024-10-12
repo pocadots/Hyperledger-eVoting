@@ -10,9 +10,6 @@ const channelName = envOrDefault('CHANNEL_NAME', 'mychannel');
 const chaincodeName = envOrDefault('CHAINCODE_NAME', 'basic');
 const mspId = envOrDefault('MSP_ID', 'Org1MSP');
 
-// let duration = ((parseInt(duration_d)*24*60) + (parseInt(duration_h)*60)+ (parseInt(duration_m))).toString();
-let duration = (parseInt(3600)).toString();
-
 
 // Path to crypto materials.
 const cryptoPath = envOrDefault(
